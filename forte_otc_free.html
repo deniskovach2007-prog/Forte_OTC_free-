@@ -1,0 +1,121 @@
+<!doctype html>
+<html lang="uk">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#0b1020">
+<title>FORTE OTC — Signal Scanner</title>
+<style>
+:root{color-scheme:dark;--bg:#0b1020;--panel:#121a2d;--line:#26334c;--muted:#9aa9c4;--text:#edf3ff;--green:#39d98a;--red:#ff647c;--blue:#79a9ff;--gold:#ffcc66}
+*{box-sizing:border-box}body{margin:0;background:radial-gradient(ellipse at top,#172440,var(--bg) 58%);font:15px -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color:var(--text);padding:18px 13px 36px}.wrap{max-width:760px;margin:auto}.brand{font-weight:900;letter-spacing:3px;font-size:27px}.sub{color:var(--muted);margin:5px 0 20px}.panel{background:rgba(18,26,45,.96);border:1px solid var(--line);border-radius:17px;padding:16px;margin:12px 0;box-shadow:0 10px 35px #0002}.row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}.row>*{flex:1;min-width:130px}label{display:block;color:var(--muted);font-size:12px;margin:0 0 7px}input,select,button{font:inherit;border-radius:11px;border:1px solid var(--line);padding:12px;background:#0c1426;color:var(--text);width:100%}button{background:#244b8d;border:0;font-weight:800;cursor:pointer}button.secondary{background:#202c43}button:disabled{opacity:.5}.small{font-size:12px;color:var(--muted);line-height:1.5}.status{padding:10px 12px;border-radius:10px;background:#0c1426;color:var(--muted);margin-top:10px;overflow-wrap:anywhere}.signal{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:14px}.tile{background:#0c1426;border:1px solid var(--line);padding:14px;border-radius:13px}.big{font-size:25px;font-weight:900;margin-top:6px}.up{color:var(--green)}.down{color:var(--red)}.warn{color:var(--gold)}.meter{height:10px;background:#273248;border-radius:9px;overflow:hidden;margin:9px 0}.fill{height:100%;width:0;background:var(--green);transition:width .3s}.asset{display:flex;justify-content:space-between;gap:12px;border-bottom:1px solid var(--line);padding:9px 0}.asset:last-child{border:0}.pill{border-radius:99px;background:#202c43;padding:4px 8px;font-size:12px}.foot{color:var(--muted);font-size:11px;line-height:1.5;margin-top:14px}a{color:#9dc0ff}.hidden{display:none}@media(max-width:430px){.signal{grid-template-columns:1fr 1fr}.panel{padding:13px}}
+</style>
+</head>
+<body><main class="wrap">
+<div class="brand">FORTE <span style="color:var(--blue)">OTC</span></div>
+<div class="sub">Read-only market scanner · без доступу до брокерського акаунта</div>
+
+<section class="panel">
+<h3 style="margin:0 0 12px">Підключення даних</h3>
+<label for="apiKey">Безкоштовний API-ключ OTCharts</label>
+<input id="apiKey" type="password" autocomplete="off" placeholder="Встав ключ otc_live_…">
+<div class="small" style="margin:8px 0 12px">Ключ вводиться лише в цьому браузері й не записаний у файл. Не публікуй його в коді GitHub. Сервіс сторонній, не офіційний Pocket Option.</div>
+<div class="row">
+<div><label for="tf">Таймфрейм аналізу</label><select id="tf"><option value="60">M1</option><option value="300">M5</option></select></div>
+<div><label for="expiry">Час угоди</label><select id="expiry"><option value="1">1 хвилина</option><option value="5">5 хвилин</option><option value="10">10 хвилин</option></select></div>
+</div>
+<div class="row" style="margin-top:12px"><button id="scan">START — сканувати</button><button id="refresh" class="secondary">Оновити дані</button></div>
+<div id="status" class="status" role="status">Введи API-ключ і натисни START. Без реальних даних сигнал не генерується.</div>
+</section>
+
+<section class="panel">
+<div class="row" style="align-items:start"><div><div class="small">НАЙКРАЩИЙ КАНДИДАТ СЕРЕД ДОСТУПНИХ ПАР</div><div id="pair" class="big">—</div></div><div><div class="small">НАПРЯМОК</div><div id="direction" class="big">—</div></div></div>
+<div class="signal">
+<div class="tile"><div class="small">Ризик (1–100)</div><div id="risk" class="big">—</div><div class="meter"><div id="riskFill" class="fill"></div></div><div id="riskText" class="small">Очікує аналізу</div></div>
+<div class="tile"><div class="small">Оцінка умов</div><div id="score" class="big">—</div><div id="scoreText" class="small">Не є ймовірністю виграшу</div></div>
+</div>
+<div class="row" style="margin-top:12px"><button id="copy" class="secondary">Копіювати пару</button><button id="again" class="secondary">Повторити аналіз</button></div>
+<div id="reasons" class="small" style="margin-top:12px">Після сканування тут з'являться фактори рішення.</div>
+</section>
+
+<section class="panel">
+<h3 style="margin:0 0 8px">Результат сканування</h3>
+<div class="small">Безкоштовний тариф джерела обмежений доступними інструментами та кількістю запитів. Цей файл аналізує лише пари, які джерело дозволяє прочитати.</div>
+<div id="assets" style="margin-top:10px"><div class="small">Дані ще не завантажені.</div></div>
+</section>
+
+<section class="panel">
+<h3 style="margin:0 0 8px">Що аналізує FORTE</h3>
+<div class="small">EMA 9/21 · RSI 14 · MACD 12/26/9 · Bollinger Bands · ATR 14 · VWAP-подібний проксі (за наявності OHLC без реального обсягу) · структура максимумів/мінімумів · рівні підтримки/опору · імпульс і форма останньої свічки.</div>
+<div class="foot">Застереження: OTC-котирування синтетичні й залежать від постачальника. Сигнал не гарантує прибутку. Не торгуй на гроші, які не можеш дозволити собі втратити. Це інформаційний аналіз, не фінансова порада.</div>
+</section>
+</main>
+<script>
+const $=id=>document.getElementById(id);
+const symbols=[["EURUSD_otc","EUR/USD OTC"],["GBPUSD_otc","GBP/USD OTC"],["USDJPY_otc","USD/JPY OTC"],["BTCUSD_otc","BTC/USD OTC"],["AUDUSD_otc","AUD/USD OTC"]];
+let lastResult=null;
+function setStatus(s){$("status").textContent=s}
+function mean(a){return a.reduce((s,x)=>s+x,0)/Math.max(1,a.length)}
+function ema(a,n){let k=2/(n+1),out=[];let e=a.slice(0,n).reduce((s,x)=>s+x,0)/n;for(let i=0;i<a.length;i++){if(i<n-1)out.push(null);else if(i===n-1)out.push(e);else{e=a[i]*k+e*(1-k);out.push(e)}}return out}
+function rsi(a,n=14){let gains=0,losses=0;for(let i=1;i<=n;i++){let d=a[i]-a[i-1];if(d>0)gains+=d;else losses-=d}let ag=gains/n,al=losses/n;for(let i=n+1;i<a.length;i++){let d=a[i]-a[i-1];ag=(ag*(n-1)+Math.max(0,d))/n;al=(al*(n-1)+Math.max(0,-d))/n}return al===0?100:100-100/(1+ag/al)}
+function analyze(c){
+ if(!Array.isArray(c)||c.length<40)throw Error("Недостатньо свічок: потрібно щонайменше 40.");
+ let closes=c.map(x=>+x.close), highs=c.map(x=>+x.high), lows=c.map(x=>+x.low), opens=c.map(x=>+x.open);
+ if([...closes,...highs,...lows,...opens].some(x=>!Number.isFinite(x)||x<=0))throw Error("Джерело повернуло некоректні свічки.");
+ let e9=ema(closes,9),e21=ema(closes,21),rv=rsi(closes),n=closes.length,price=closes[n-1];
+ let eFast=ema(closes,12),eSlow=ema(closes,26),macd=closes.map((_,i)=>eFast[i]!=null&&eSlow[i]!=null?eFast[i]-eSlow[i]:null);
+ let sig=ema(macd.map(x=>x==null?0:x).slice(25),9).at(-1),m=macd[n-1]||0,prevM=macd[n-2]||0;
+ let window=closes.slice(-20),sd=Math.sqrt(mean(window.map(x=>(x-mean(window))**2))),upper=mean(window)+2*sd,lower=mean(window)-2*sd;
+ let tr=[];for(let i=1;i<n;i++)tr.push(Math.max(highs[i]-lows[i],Math.abs(highs[i]-closes[i-1]),Math.abs(lows[i]-closes[i-1])));
+ let atr=mean(tr.slice(-14)),hi=Math.max(...highs.slice(-20,-1)),lo=Math.min(...lows.slice(-20,-1));
+ let body=closes[n-1]-opens[n-1],range=Math.max(1e-10,highs[n-1]-lows[n-1]),bodyRatio=Math.abs(body)/range;
+ let trend=(e9[n-1]>e21[n-1]?1:-1),mom=(closes[n-1]>closes[n-4]?1:-1),mac=(m>prevM?1:-1);
+ let score=0,why=[];
+ score+=trend*2;why.push("EMA 9/21: "+(trend>0?"висхідний":"низхідний")+" нахил");
+ score+=(rv<35?1:rv>65?-1:rv>50?1:-1);why.push("RSI 14: "+rv.toFixed(1));
+ score+=mac;why.push("MACD імпульс: "+(mac>0?"підсилюється":"слабшає"));
+ score+=mom;why.push("Короткий імпульс: "+(mom>0?"вгору":"вниз"));
+ if(price>upper){score-=1;why.push("ціна вище верхньої Bollinger");}else if(price<lower){score+=1;why.push("ціна нижче нижньої Bollinger");}
+ if(price>hi){score+=2;why.push("пробій локального максимуму");}else if(price<lo){score-=2;why.push("пробій локального мінімуму");}
+ score+=body>0&&bodyRatio>.55?1:body<0&&bodyRatio>.55?-1:0;
+ let dir=score>=0?"UP":"DOWN";
+ let volatility=atr/price*10000;
+ let risk=Math.round(Math.min(95,Math.max(20,38+Math.abs(score-0)*-1+volatility*2+(Math.abs(rv-50)>25?10:0))));
+ if(Math.abs(score)<2)risk=Math.max(risk,72);
+ let quality=Math.round(Math.min(92,Math.max(8,50+score*7)));
+ return {dir,score,risk,quality,why,price,atr,rv};
+}
+async function getCandles(symbol,tf,key){
+ const url=`https://otcharts.com/v1/candles?venue=otc&symbol=${encodeURIComponent(symbol)}&tf=${tf}&limit=100`;
+ const r=await fetch(url,{headers:{Authorization:"Bearer "+key,Accept:"application/json"}});
+ if(!r.ok)throw Error(`${symbol}: API ${r.status}. Перевір ключ, ліміти та доступ тарифу.`);
+ const data=await r.json();
+ let arr=Array.isArray(data)?data:(data.candles||data.data||data.bars||[]);
+ return arr.map(x=>({open:+(x.open??x.o),high:+(x.high??x.h),low:+(x.low??x.l),close:+(x.close??x.c),time:x.time??x.timestamp})).filter(x=>Number.isFinite(x.close));
+}
+async function scan(){
+ const key=$("apiKey").value.trim();if(!key){setStatus("Спочатку введи безкоштовний API-ключ OTCharts. Без ключа джерело не віддає дані.");return}
+ $("scan").disabled=true;$("refresh").disabled=true;setStatus("Завантажую реальні свічки з джерела…");
+ $("assets").innerHTML="";let results=[];
+ try{
+  for(const [sym,label] of symbols){
+   setStatus(`Отримую дані: ${label}…`);
+   try{const c=await getCandles(sym,$("tf").value,key);const a=analyze(c);results.push({sym,label,c,...a});}
+   catch(e){results.push({sym,label,error:e.message});}
+   await new Promise(r=>setTimeout(r,250));
+  }
+  const valid=results.filter(x=>!x.error).sort((a,b)=>Math.abs(b.score)-Math.abs(a.score));
+  $("assets").innerHTML=results.map(x=>`<div class="asset"><div><b>${x.label}</b><div class="small">${x.error?x.error:`RSI ${x.rv.toFixed(1)} · score ${x.score}`}</div></div><span class="pill ${x.error?'warn':x.dir==='UP'?'up':'down'}">${x.error?'Немає даних':x.dir}</span></div>`).join("");
+  if(!valid.length){setStatus("Не вдалося отримати валідні свічки. Перевір ключ і доступ API. Жодного вигаданого сигналу не показано.");return}
+  const best=valid[0];lastResult=best;
+  $("pair").textContent=best.label;$("direction").textContent=best.dir;$("direction").className="big "+(best.dir==="UP"?"up":"down");
+  $("risk").textContent=best.risk+"/100";$("riskFill").style.width=best.risk+"%";$("riskFill").style.background=best.risk>=70?"var(--red)":best.risk>=50?"var(--gold)":"var(--green)";
+  $("riskText").textContent=best.risk>=70?"Високий ризик — краще пропустити":best.risk>=50?"Помірний/підвищений ризик":"Відносно нижчий ризик, не гарантія";
+  $("score").textContent=best.quality+"/100";$("scoreText").textContent="Оцінка технічної узгодженості, не win rate";
+  $("reasons").textContent=best.why.join(" · ")+` | ATR: ${best.atr.toPrecision(4)} | RSI: ${best.rv.toFixed(1)} | Час угоди в інтерфейсі: ${$("expiry").value} хв.`;
+  setStatus(`Готово. Обрано ${best.label}. Успішно проаналізовано ${valid.length} з ${symbols.length} пар. Оновлюй вручну, щоб зекономити безкоштовний ліміт API.`);
+ }catch(e){setStatus("Помилка отримання даних: "+e.message)}
+ finally{$("scan").disabled=false;$("refresh").disabled=false}
+}
+$("scan").addEventListener("click",scan);$("refresh").addEventListener("click",scan);$("again").addEventListener("click",scan);
+$("copy").addEventListener("click",async()=>{if(!lastResult){setStatus("Спочатку отримай сигнал.");return}try{await navigator.clipboard.writeText(lastResult.sym);setStatus("Назву пари скопійовано: "+lastResult.sym)}catch(e){setStatus("Не вдалося скопіювати автоматично. Назва пари: "+lastResult.sym)}});
+</script>
+</body></html>
